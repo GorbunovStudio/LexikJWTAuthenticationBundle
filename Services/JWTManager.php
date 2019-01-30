@@ -77,6 +77,26 @@ class JWTManager implements JWTManagerInterface, JWTTokenManagerInterface
         return $jwtString;
     }
 
+    public function createWithPayload(UserInterface $user, array $payload)
+    {
+        $payload = array_merge($payload, ['roles' => $user->getRoles()]);
+        $this->addUserIdentityToPayload($user, $payload);
+
+        $jwtCreatedEvent = new JWTCreatedEvent($payload, $user);
+        $this->dispatcher->dispatch(Events::JWT_CREATED, $jwtCreatedEvent);
+
+        if ($this->jwtEncoder instanceof HeaderAwareJWTEncoderInterface) {
+            $jwtString = $this->jwtEncoder->encode($jwtCreatedEvent->getData(), $jwtCreatedEvent->getHeader());
+        } else {
+            $jwtString = $this->jwtEncoder->encode($jwtCreatedEvent->getData());
+        }
+
+        $jwtEncodedEvent = new JWTEncodedEvent($jwtString);
+        $this->dispatcher->dispatch(Events::JWT_ENCODED, $jwtEncodedEvent);
+
+        return $jwtString;
+    }
+
     /**
      * {@inheritdoc}
      */
